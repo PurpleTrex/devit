@@ -1,0 +1,80 @@
+[package]
+name = "devit-backend"
+version = "0.1.0"
+edition = "2021"
+authors = ["DevIT Team"]
+description = "DevIT Backend - A modern GitHub alternative API server"
+
+[dependencies]
+# Web framework
+actix-web = "4.4"
+actix-cors = "0.6"
+actix-multipart = "0.6"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "mysql", "chrono", "uuid", "migrate"] }
+redis = { version = "0.24", features = ["tokio-comp"] }
+
+# Authentication & Security
+jsonwebtoken = "9.1"
+bcrypt = "0.15"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+actix-web-httpauth = "0.8"
+regex = "1.0"
+
+# Date & Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Environment & Configuration
+dotenv = "0.15"
+config = "0.13"
+
+# GCP Integration
+google-cloud-storage = "0.15"
+google-cloud-auth = "0.13"
+
+# Git operations
+git2 = "0.18"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# WebSocket support
+actix-ws = "0.2"
+
+# GraphQL (optional, for future use)
+async-graphql = "6.0"
+async-graphql-actix-web = "6.0"
+
+# Rate limiting
+governor = "0.6"
+
+# Validation
+validator = { version = "0.16", features = ["derive"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Encryption
+ring = "0.17"
+
+[dev-dependencies]
+actix-rt = "2.9"
+actix-test = "0.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

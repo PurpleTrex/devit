@@ -1,0 +1,396 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  email             String   @unique
+  fullName          String
+  password          String
+  avatarUrl         String?
+  bio               String?
+  location          String?
+  website           String?
+  company           String?
+  status            UserStatus @default(ACTIVE)
+  emailVerified     Boolean  @default(false)
+  twoFactorEnabled  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastActive        DateTime @default(now())
+
+  // Relations
+  repositories      Repository[]
+  ownedOrganizations Organization[] @relation("OrganizationOwner")
+  organizationMembers OrganizationMember[]
+  issues            Issue[]
+  pullRequests      PullRequest[]
+  comments          Comment[]
+  stars             Star[]
+  followers         Follow[] @relation("UserFollowers")
+  following         Follow[] @relation("UserFollowing")
+  sshKeys           SshKey[]
+  accessTokens      AccessToken[]
+  collaborators     Collaborator[]
+  issueAssignees    IssueAssignee[]
+
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  avatarUrl   String?
+  website     String?
+  location    String?
+  email       String?
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner       User     @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  ownerId     String
+  members     OrganizationMember[]
+  repositories Repository[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id      String              @id @default(cuid())
+  role    OrganizationRole    @default(MEMBER)
+  joinedAt DateTime           @default(now())
+
+  // Relations
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model Repository {
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  isPrivate        Boolean           @default(false)
+  defaultBranch    String            @default("main")
+  language         String?
+  topics           String[]
+  archived         Boolean           @default(false)
+  disabled         Boolean           @default(false)
+  size             Int               @default(0)
+  starCount        Int               @default(0)
+  forkCount        Int               @default(0)
+  watcherCount     Int               @default(0)
+  openIssuesCount  Int               @default(0)
+  license          String?
+  hasIssues        Boolean           @default(true)
+  hasProjects      Boolean           @default(true)
+  hasWiki          Boolean           @default(true)
+  hasPages         Boolean           @default(false)
+  hasDownloads     Boolean           @default(true)
+  template         Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  pushedAt         DateTime?
+
+  // Relations
+  owner            User?             @relation(fields: [ownerId], references: [id])
+  ownerId          String?
+  organization     Organization?     @relation(fields: [organizationId], references: [id])
+  organizationId   String?
+  parent           Repository?       @relation("RepositoryFork", fields: [parentId], references: [id])
+  parentId         String?
+  forks            Repository[]      @relation("RepositoryFork")
+  issues           Issue[]
+  pullRequests     PullRequest[]
+  stars            Star[]
+  branches         Branch[]
+  tags             Tag[]
+  releases         Release[]
+  collaborators    Collaborator[]
+  labels           Label[]
+
+  @@unique([name, ownerId])
+  @@unique([name, organizationId])
+  @@map("repositories")
+}
+
+model Issue {
+  id        String      @id @default(cuid())
+  number    Int
+  title     String
+  body      String?
+  state     IssueState  @default(OPEN)
+  locked    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  closedAt  DateTime?
+
+  // Relations
+  author       User         @relation(fields: [authorId], references: [id])
+  authorId     String
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+  assignees    IssueAssignee[]
+  labels       IssueLabel[]
+  comments     Comment[]
+
+  @@unique([number, repositoryId])
+  @@map("issues")
+}
+
+model PullRequest {
+  id          String           @id @default(cuid())
+  number      Int
+  title       String
+  body        String?
+  state       PullRequestState @default(OPEN)
+  locked      Boolean          @default(false)
+  merged      Boolean          @default(false)
+  mergeable   Boolean?
+  headBranch  String
+  baseBranch  String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  closedAt    DateTime?
+  mergedAt    DateTime?
+
+  // Relations
+  author       User         @relation(fields: [authorId], references: [id])
+  authorId     String
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+  comments     Comment[]
+
+  @@unique([number, repositoryId])
+  @@map("pull_requests")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author        User         @relation(fields: [authorId], references: [id])
+  authorId      String
+  issue         Issue?       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId       String?
+  pullRequest   PullRequest? @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  pullRequestId String?
+
+  @@map("comments")
+}
+
+model Star {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+
+  @@unique([userId, repositoryId])
+  @@map("stars")
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  follower  User @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId String
+  following User @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId String
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  sha       String
+  protected Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+
+  @@unique([name, repositoryId])
+  @@map("branches")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  sha       String
+  message   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+
+  @@unique([name, repositoryId])
+  @@map("tags")
+}
+
+model Release {
+  id          String   @id @default(cuid())
+  tagName     String
+  name        String?
+  body        String?
+  draft       Boolean  @default(false)
+  prerelease  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  publishedAt DateTime?
+
+  // Relations
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+
+  @@map("releases")
+}
+
+model Collaborator {
+  id         String              @id @default(cuid())
+  permission CollaboratorPermission @default(READ)
+  createdAt  DateTime            @default(now())
+
+  // Relations
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+
+  @@unique([userId, repositoryId])
+  @@map("collaborators")
+}
+
+model IssueAssignee {
+  id       String @id @default(cuid())
+  
+  // Relations
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  issue    Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId  String
+
+  @@unique([userId, issueId])
+  @@map("issue_assignees")
+}
+
+model Label {
+  id          String @id @default(cuid())
+  name        String
+  color       String
+  description String?
+
+  // Relations
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repositoryId String
+  issues       IssueLabel[]
+
+  @@unique([name, repositoryId])
+  @@map("labels")
+}
+
+model IssueLabel {
+  id      String @id @default(cuid())
+
+  // Relations
+  issue   Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  labelId String
+
+  @@unique([issueId, labelId])
+  @@map("issue_labels")
+}
+
+model SshKey {
+  id        String   @id @default(cuid())
+  title     String
+  key       String   @unique
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("ssh_keys")
+}
+
+model AccessToken {
+  id        String   @id @default(cuid())
+  name      String
+  token     String   @unique
+  scopes    String[]
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  lastUsed  DateTime?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("access_tokens")
+}
+
+// Enums
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  DELETED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum IssueState {
+  OPEN
+  CLOSED
+}
+
+enum PullRequestState {
+  OPEN
+  CLOSED
+  MERGED
+}
+
+enum CollaboratorPermission {
+  READ
+  WRITE
+  ADMIN
+}

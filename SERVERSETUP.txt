@@ -1,0 +1,22 @@
+# Copy your project to the server
+scp -r DeviIT/ user@your-server:/tmp/devit-source
+
+# Run the deployment script
+./scripts/deploy.sh
+
+ DNS Configuration:
+Point devit.dev to your server IP
+Configure subdomains: api.devit.dev, storage.devit.dev
+Follow the DNS_CONFIGURATION.md guide
+# Run SSL setup
+chmod +x scripts/ssl-setup.sh
+./scripts/ssl-setup.sh
+# Copy and configure environment
+cp .env.production.template .env.production
+# Edit .env.production with your actual values
+
+# Start all services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Run health check
+./scripts/health-check.sh

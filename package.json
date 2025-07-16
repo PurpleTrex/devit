@@ -1,0 +1,56 @@
+{
+  "name": "devit",
+  "version": "0.1.0",
+  "description": "DevIT - A modern GitHub alternative built for developers",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && cargo run",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && cargo build --release",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && cargo test",
+    "setup": "npm install && cd frontend && npm install && cd ../backend && cargo build",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "deploy:gcp": "./scripts/deploy-complete-gcp.sh",
+    "deploy:infrastructure": "./scripts/setup-gcp-infrastructure.sh",
+    "deploy:backend": "./scripts/deploy-backend.sh",
+    "deploy:frontend": "./scripts/deploy-frontend.sh",
+    "gcp:setup": "chmod +x scripts/*.sh",
+    "gcp:build": "gcloud builds submit --config=cloudbuild.yaml",
+    "gcp:logs:backend": "gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=devit-backend\" --limit=50",
+    "gcp:logs:frontend": "gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=devit-frontend\" --limit=50",
+    "health:check": "curl -f http://localhost:3000/api/health && curl -f http://localhost:8080/health",
+    "health:check:gcp": "scripts/health-check.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devit/devit.git"
+  },
+  "keywords": [
+    "git",
+    "github-alternative",
+    "collaboration",
+    "devtools",
+    "ci-cd",
+    "code-hosting"
+  ],
+  "author": "DevIT Team",
+  "license": "MIT"
+}

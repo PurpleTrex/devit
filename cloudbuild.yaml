@@ -1,0 +1,85 @@
+steps:
+  # Build Backend for MySQL
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-f'
+      - 'backend/Dockerfile.gcp'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/devit-backend:${BUILD_ID}'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/devit-backend:latest'
+      - '.'
+    
+  # Build Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'frontend/Dockerfile.gcp'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/devit-frontend:${BUILD_ID}'
+      - '-t'
+      - 'gcr.io/${PROJECT_ID}/devit-frontend:latest'
+      - '.'
+
+  # Push Backend Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/${PROJECT_ID}/devit-backend:${BUILD_ID}'
+
+  # Push Frontend Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/${PROJECT_ID}/devit-frontend:${BUILD_ID}'
+
+  # Deploy Backend to Cloud Run with MySQL
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'devit-backend'
+      - '--image=gcr.io/${PROJECT_ID}/devit-backend:${BUILD_ID}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=DATABASE_URL=${_DATABASE_URL},JWT_SECRET=${_JWT_SECRET},REDIS_URL=${_REDIS_URL},GCS_BUCKET_NAME=${_GCS_BUCKET_NAME}'
+      - '--add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}'
+
+  # Deploy Frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'devit-frontend'
+      - '--image=gcr.io/${PROJECT_ID}/devit-frontend:${BUILD_ID}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=3000'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=NEXT_PUBLIC_API_URL=${_API_URL},DATABASE_URL=${_DATABASE_URL}'
+      - '--add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}'
+
+substitutions:
+  _REGION: 'us-central1'
+  _DATABASE_URL: 'postgresql://devit:${_DB_PASSWORD}@/${_DB_NAME}?host=/cloudsql/${PROJECT_ID}:${_REGION}:${_DB_INSTANCE_NAME}'
+  _CLOUD_SQL_INSTANCE: '${PROJECT_ID}:${_REGION}:${_DB_INSTANCE_NAME}'
+  _API_URL: 'https://devit-backend-${_REGION}-${PROJECT_ID}.a.run.app'
+  _GCS_BUCKET_NAME: '${PROJECT_ID}-devit-storage'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+  
+timeout: '1200s'
